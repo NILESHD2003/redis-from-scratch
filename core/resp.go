@@ -19,6 +19,13 @@ func findCRLFIndex(data []byte) int {
 	return -1
 }
 
+// Helper to find the length of the data stream for bulk strings and arrays.
+func readLength(data []byte) (int, int, error) {
+	length, pos, error := decodeInteger64(data)
+
+	return int(length), pos, error
+}
+
 // Read the simple string from the data stream and return it as a string,
 // along with the number of bytes read(delta) and any error encountered.
 func decodeSimpleString(data []byte) (string, int, error) {
@@ -40,16 +47,70 @@ func decodeError(data []byte) (string, int, error) {
 	return decodeSimpleString(data)
 }
 
+// Read the integer value from the data stream and return it as an int64,
+// along with the number of bytes read(delta) and any error encountered.
 func decodeInteger64(data []byte) (int64, int, error) {
-	// pending implementation
+	pos := 1
+
+	var value int64 = 0
+
+	relativePos := findCRLFIndex(data[pos:])
+	if relativePos == -1 {
+		return 0, 0, ErrCRLFNotFound
+	}
+
+	crlfPos := pos + relativePos
+
+	for ; pos < crlfPos; pos++ {
+		value = value*10 + int64(data[pos]-'0')
+	}
+
+	return value, pos + 2, nil
 }
 
+// Read the bulk string from the data stream and return it as a string,
+// along with the number of bytes read(delta) and any error encountered.
 func decodeBulkString(data []byte) (string, int, error) {
-	// pending implementation
+	length, pos, err := readLength(data)
+	if err != nil {
+		return "", 0, err
+	}
+
+	if length < 0 {
+		return "", pos, nil
+	}
+
+	if pos+int(length)+2 > len(data) {
+		return "", 0, ErrCRLFNotFound
+	}
+
+	return string(data[pos : pos+int(length)]), pos + int(length) + 2, nil
 }
 
+// Read the array from the data stream and return it as a slice of interfaces,
+// along with the number of bytes read(delta) and any error encountered.
 func decodeArray(data []byte) ([]interface{}, int, error) {
-	// pending implementation
+	length, pos, err := readLength(data)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	if length < 0 {
+		return nil, pos, nil
+	}
+
+	var elements []interface{} = make([]interface{}, length)
+
+	for i := range elements {
+		elem, delta, err := PartialDecodeRESP(data[pos:])
+		if err != nil {
+			return nil, 0, err
+		}
+
+		elements[i] = elem
+		pos += delta
+	}
+	return elements, pos, nil
 }
 
 func PartialDecodeRESP(data []byte) (interface{}, int, error) {
