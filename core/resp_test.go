@@ -367,3 +367,106 @@ func TestDecodeBulkString(t *testing.T) {
 		})
 	}
 }
+
+func TestDecodeArray(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   []byte
+		want    []interface{}
+		wantErr error
+	}{
+		{
+			name:    "Valid array",
+			input:   []byte("*3\r\n$3\r\nPUT\r\n$1\r\nK\r\n$1\r\nV\r\n"),
+			want:    []interface{}{"PUT", "K", "V"},
+			wantErr: nil,
+		},
+		{
+			name:    "Empty array",
+			input:   []byte("*0\r\n"),
+			want:    []interface{}{},
+			wantErr: nil,
+		},
+		{
+			name:    "Null array",
+			input:   []byte("*-1\r\n"),
+			want:    nil,
+			wantErr: nil,
+		},
+		{
+			name:    "Array with mixed types",
+			input:   []byte("*4\r\n+OK\r\n-ERR error message\r\n:10\r\n$5\r\nHello\r\n"),
+			want:    []interface{}{"OK", "ERR error message", int64(10), "Hello"},
+			wantErr: nil,
+		},
+		{
+			name:    "Array with nested array",
+			input:   []byte("*2\r\n*2\r\n+OK\r\n:10\r\n$5\r\nHello\r\n"),
+			want:    []interface{}{[]interface{}{"OK", int64(10)}, "Hello"},
+			wantErr: nil,
+		},
+		{
+			name:    "Array with missing CRLF",
+			input:   []byte("*2\r\n+OK\r\n:10"),
+			want:    nil,
+			wantErr: ErrCRLFNotFound,
+		},
+		{
+			name:    "Array with invalid length",
+			input:   []byte("*-2\r\n"),
+			want:    nil,
+			wantErr: ErrInvalidLength,
+		},
+		{
+			name:    "Array with non-numeric length",
+			input:   []byte("*abc\r\n"),
+			want:    nil,
+			wantErr: ErrInvalidLength,
+		},
+		{
+			name:    "Array with fewer elements than specified",
+			input:   []byte("*3\r\n+OK\r\n:10\r\n"),
+			want:    nil,
+			wantErr: ErrEmptyData,
+		},
+		{
+			name:    "Array with more elements than specified",
+			input:   []byte("*2\r\n+OK\r\n:10\r\n$5\r\nHello\r\n"),
+			want:    []interface{}{"OK", int64(10)},
+			wantErr: nil,
+		},
+		{
+			name:    "Array with nested array",
+			input:   []byte("*2\r\n*2\r\n+OK\r\n:10\r\n$5\r\nHello\r\n"),
+			want:    []interface{}{[]interface{}{"OK", int64(10)}, "Hello"},
+			wantErr: nil,
+		},
+		{
+			name:    "Array whose child's CRLF is missing",
+			input:   []byte("*2\r\n*2\r\n+OK\r\n:10\r\n$5\r\nHello"),
+			want:    nil,
+			wantErr: ErrCRLFNotFound,
+		},
+		{
+			name:    "Array with nested array whose length is invalid",
+			input:   []byte("*2\r\n*abc\r\n+OK\r\n:10\r\n$5\r\nHello\r\n"),
+			want:    nil,
+			wantErr: ErrInvalidLength,
+		},
+		{
+			name:    "Array with invalid child bulk string",
+			input:   []byte("*3\r\n+OK\r\n:10\r\n$abc\r\n"),
+			want:    nil,
+			wantErr: ErrInvalidLength,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, _, err := decodeArray(tt.input)
+			if !reflect.DeepEqual(got, tt.want) || err != tt.wantErr {
+				t.Errorf("decodeArray() = got %v, want %v, gotErr %v, wantErr %v", got, tt.want, err, tt.wantErr)
+			}
+		})
+	}
+}
