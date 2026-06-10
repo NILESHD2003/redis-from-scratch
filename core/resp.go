@@ -7,6 +7,7 @@ var (
 	ErrCRLFNotFound    = errors.New("CRLF not found in data stream.")
 	ErrInvalidRESPType = errors.New("Invalid RESP type.")
 	ErrEmptyData       = errors.New("Empty data.")
+	ErrInvalidInteger  = errors.New("Invalid integer format.")
 )
 
 // Helper to find the next CLRF in the data stream
@@ -51,6 +52,12 @@ func decodeError(data []byte) (string, int, error) {
 // along with the number of bytes read(delta) and any error encountered.
 func decodeInteger64(data []byte) (int64, int, error) {
 	pos := 1
+	sign := int64(1)
+
+	if data[pos] == '-' {
+		sign = -1
+		pos++
+	}
 
 	var value int64 = 0
 
@@ -62,10 +69,13 @@ func decodeInteger64(data []byte) (int64, int, error) {
 	crlfPos := pos + relativePos
 
 	for ; pos < crlfPos; pos++ {
+		if data[pos] < '0' || data[pos] > '9' {
+			return 0, 0, ErrInvalidInteger
+		}
 		value = value*10 + int64(data[pos]-'0')
 	}
 
-	return value, pos + 2, nil
+	return sign * value, pos + 2, nil
 }
 
 // Read the bulk string from the data stream and return it as a string,

@@ -136,3 +136,138 @@ func TestDecodeSimpleString(t *testing.T) {
 		})
 	}
 }
+
+func TestDecodeError(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   []byte
+		want    string
+		wantErr error
+	}{
+		{
+			name:    "Valid error string",
+			input:   []byte("-ERR something went wrong\r\n"),
+			want:    "ERR something went wrong",
+			wantErr: nil,
+		},
+		{
+			name:    "Missing CRLF",
+			input:   []byte("-ERR something went wrong"),
+			want:    "",
+			wantErr: ErrCRLFNotFound,
+		},
+		{
+			name:    "Empty error string",
+			input:   []byte("-\r\n"),
+			want:    "",
+			wantErr: nil,
+		},
+		{
+			name:    "Error with special characters",
+			input:   []byte("-ERR !@#$%^&*()\r\n"),
+			want:    "ERR !@#$%^&*()",
+			wantErr: nil,
+		},
+		{
+			name:    "Error with spaces",
+			input:   []byte("-ERR something went wrong with   spaces\r\n"),
+			want:    "ERR something went wrong with   spaces",
+			wantErr: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, _, err := decodeError(tt.input)
+			if got != tt.want || err != tt.wantErr {
+				t.Errorf("decodeError() = got %q, want %q, gotErr %v, wantErr %v", got, tt.want, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestDecodeInteger64(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   []byte
+		want    int64
+		wantErr error
+	}{
+		{
+			name:    "Valid integer",
+			input:   []byte(":10\r\n"),
+			want:    10,
+			wantErr: nil,
+		},
+		{
+			name:    "Missing CRLF",
+			input:   []byte(":10"),
+			want:    0,
+			wantErr: ErrCRLFNotFound,
+		},
+		{
+			name:    "Zero integer",
+			input:   []byte(":0\r\n"),
+			want:    0,
+			wantErr: nil,
+		},
+		{
+			name:    "Single digit integer",
+			input:   []byte(":1\r\n"),
+			want:    1,
+			wantErr: nil,
+		},
+		{
+			name:    "Large integer",
+			input:   []byte(":123456789\r\n"),
+			want:    123456789,
+			wantErr: nil,
+		},
+		{
+			name:    "Max integer",
+			input:   []byte(":9223372036854775807\r\n"),
+			want:    9223372036854775807,
+			wantErr: nil,
+		},
+		{
+			name:    "Min integer",
+			input:   []byte(":-9223372036854775808\r\n"),
+			want:    -9223372036854775808,
+			wantErr: nil,
+		},
+		{
+			name:    "Non numeric characters",
+			input:   []byte(":10abc\r\n"),
+			want:    0,
+			wantErr: ErrInvalidInteger,
+		},
+		{
+			name:    "Negative integer",
+			input:   []byte(":-10\r\n"),
+			want:    -10,
+			wantErr: nil,
+		},
+		{
+			name:    "Integer with leading zeros",
+			input:   []byte(":00010\r\n"),
+			want:    10,
+			wantErr: nil,
+		},
+		{
+			name:    "Empty integer",
+			input:   []byte(":\r\n"),
+			want:    0,
+			wantErr: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, _, err := decodeInteger64(tt.input)
+			if got != tt.want || err != tt.wantErr {
+				t.Errorf("decodeInteger64() = got %d, want %d, gotErr %v, wantErr %v", got, tt.want, err, tt.wantErr)
+			}
+		})
+	}
+
+}
