@@ -269,5 +269,101 @@ func TestDecodeInteger64(t *testing.T) {
 			}
 		})
 	}
+}
 
+func TestDecodeBulkString(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   []byte
+		want    string
+		wantErr error
+	}{
+		{
+			name:    "Valid bulk string",
+			input:   []byte("$2\r\nOK\r\n"),
+			want:    "OK",
+			wantErr: nil,
+		},
+		{
+			name:    "Valid bulk string with special characters",
+			input:   []byte("$13\r\nHello, World!\r\n"),
+			want:    "Hello, World!",
+			wantErr: nil,
+		},
+		{
+			name:    "Empty bulk string",
+			input:   []byte("$0\r\n\r\n"),
+			want:    "",
+			wantErr: nil,
+		},
+		{
+			name:    "Bulk string with spaces",
+			input:   []byte("$11\r\nHello World\r\n"),
+			want:    "Hello World",
+			wantErr: nil,
+		},
+		{
+			name:    "Null bulk string",
+			input:   []byte("$-1\r\n"),
+			want:    "",
+			wantErr: nil,
+		},
+		{
+			name:    "Single character bulk string",
+			input:   []byte("$1\r\nA\r\n"),
+			want:    "A",
+			wantErr: nil,
+		},
+		{
+			name:    "Bulk string with CRLF as content",
+			input:   []byte("$2\r\n\r\n\r\n"),
+			want:    "\r\n",
+			wantErr: nil,
+		},
+		{
+			name:    "Bulk string with missing CRLF",
+			input:   []byte("$2\r\nOK"),
+			want:    "",
+			wantErr: ErrCRLFNotFound,
+		},
+		{
+			name:    "Bulk string with invalid length",
+			input:   []byte("$-2\r\nOK\r\n"),
+			want:    "",
+			wantErr: ErrInvalidLength,
+		},
+		{
+			name:    "Bulk string with non-numeric length",
+			input:   []byte("$abc\r\nOK\r\n"),
+			want:    "",
+			wantErr: ErrInvalidLength,
+		},
+		{
+			name:    "Bulk string with payload shorter than specified length",
+			input:   []byte("$5\r\nOK\r\n"),
+			want:    "",
+			wantErr: ErrCRLFNotFound,
+		},
+		{
+			name:    "Bulk string with extra data after content",
+			input:   []byte("$2\r\nOK\r\nEXTRA"),
+			want:    "OK",
+			wantErr: nil,
+		},
+		{
+			name:    "Bulk string with payload longer than specified length",
+			input:   []byte("$2\r\nOKOK\r\n"),
+			want:    "",
+			wantErr: ErrCRLFNotFound,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, _, err := decodeBulkString(tt.input)
+			if got != tt.want || err != tt.wantErr {
+				t.Errorf("decodeBulkString() = got %q, want %q, gotErr %v, wantErr %v", got, tt.want, err, tt.wantErr)
+			}
+		})
+	}
 }

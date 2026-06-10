@@ -8,6 +8,7 @@ var (
 	ErrInvalidRESPType = errors.New("Invalid RESP type.")
 	ErrEmptyData       = errors.New("Empty data.")
 	ErrInvalidInteger  = errors.New("Invalid integer format.")
+	ErrInvalidLength   = errors.New("Invalid length for bulk string or array.")
 )
 
 // Helper to find the next CLRF in the data stream
@@ -23,6 +24,10 @@ func findCRLFIndex(data []byte) int {
 // Helper to find the length of the data stream for bulk strings and arrays.
 func readLength(data []byte) (int, int, error) {
 	length, pos, error := decodeInteger64(data)
+
+	if length < -1 || error == ErrInvalidInteger {
+		return 0, 0, ErrInvalidLength
+	}
 
 	return int(length), pos, error
 }
@@ -94,7 +99,13 @@ func decodeBulkString(data []byte) (string, int, error) {
 		return "", 0, ErrCRLFNotFound
 	}
 
-	return string(data[pos : pos+int(length)]), pos + int(length) + 2, nil
+	stringData := data[pos : pos+int(length)]
+
+	if string(data[pos+int(length):pos+int(length)+2]) != "\r\n" {
+		return "", 0, ErrCRLFNotFound
+	}
+
+	return string(stringData), pos + int(length) + 2, nil
 }
 
 // Read the array from the data stream and return it as a slice of interfaces,
