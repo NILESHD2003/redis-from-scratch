@@ -164,3 +164,21 @@ func DecodeRESP(data []byte) (interface{}, error) {
 
 	return value, err
 }
+
+func DecodeRESPString(data []byte) ([]string, error) {
+	value, err := DecodeRESP(data)
+
+	if err != nil {
+		return nil, err
+	}
+
+	ts := value.([]interface{})
+
+	tokens := make([]string, len(ts))
+
+	for i := range tokens {
+		tokens[i] = ts[i].(string)
+	}
+
+	return tokens, nil
+}

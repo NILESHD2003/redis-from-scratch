@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 
 	"github.com/NILESHD2003/redis-from-scratch/config"
+	"github.com/NILESHD2003/redis-from-scratch/core"
 )
 
 func handleClientConnection(c net.Conn, concurrent_clients *int64) {
@@ -15,14 +16,14 @@ func handleClientConnection(c net.Conn, concurrent_clients *int64) {
 
 	// Infinite loop to handle client connection and echo back messages i.e. accept messages from client and send back the same message to client
 	for {
-		cmd, err := readIncomingCommand(c)
+		tokens, err := readIncomingCommand(c)
 
 		if err != nil {
 			atomic.AddInt64(concurrent_clients, -1)
 
 			if err != io.EOF {
-				log.Fatal(
-					"[Asynchronous]Error Reading Command from Client:",
+				log.Printf(
+					"[Asynchronous]Error Reading Command from Client. Closing connection with client. Error: %v\n",
 					err,
 				)
 			}
@@ -30,7 +31,13 @@ func handleClientConnection(c net.Conn, concurrent_clients *int64) {
 			return
 		}
 
-		if err := respondToClient(c, cmd); err != nil {
+		response, err := core.Execute(tokens[0], tokens[1:])
+
+		if err != nil {
+			// TODO: return an error resp which is RESP encoded string with error prefix
+		}
+
+		if err := respondToClient(c, response); err != nil {
 			log.Fatal("[Asynchronous]Error Responding to Client: ", err)
 			atomic.AddInt64(concurrent_clients, -1)
 			return
