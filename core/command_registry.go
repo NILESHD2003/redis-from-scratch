@@ -26,26 +26,8 @@ type CommandDefinition struct {
 	Docs    CommandDocs
 }
 
-var Registry = map[string]CommandDefinition{
-	"PING": {
-		Name:    "PING",
-		Arity:   -1,
-		Handler: HandlePING,
-		Docs: CommandDocs{
-			Summary:    "Returns PONG if no argument is provided. Otherwise, returns the provided argument.",
-			Since:      "1.0.0",
-			Group:      GroupConnection,
-			Complexity: "O(1)",
-			Arguments: []ArgumentDefinition{
-				{
-					Name:        "message",
-					DisplayText: "message",
-					Type:        ArgTypeString,
-					Token:       "message",
-					Summary:     "The message to be echoed back. If not provided, defaults to 'PONG'.",
-					Since:       "1.0.0",
-				},
-			},
-		},
-	},
+var Registry = make(map[string]CommandDefinition)
+
+func Register(command CommandDefinition) {
+	Registry[command.Name] = command
 }

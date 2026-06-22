@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 
+	"github.com/NILESHD2003/redis-from-scratch/commands"
 	"github.com/NILESHD2003/redis-from-scratch/config"
 	"github.com/NILESHD2003/redis-from-scratch/server"
 )
@@ -17,5 +18,7 @@ func setup_flags() {
 
 func main() {
 	setup_flags()
+	// Register commands
+	commands.RegisterCommands()
 	server.StartServer(conf)
 }
