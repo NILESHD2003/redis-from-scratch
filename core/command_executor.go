@@ -7,21 +7,25 @@ import (
 )
 
 var (
-	ErrUnknownCommand         = errors.New("Unknown Command to Execute")
+	ErrUnknownCommand         = errors.New("ERR unknown command")
 	ErrWrongNumberOfArguments = errors.New("Wrong number of arguments for command.")
 )
 
-func Execute(command string, args []string) (string, error) {
+func NewUnknownCommandError(command string) error {
+	return fmt.Errorf("%w '%s'", ErrUnknownCommand, strings.ToUpper(command))
+}
+
+func Execute(command string, args []string) (RESPValue, error) {
 	definition, ok := Registry[strings.ToUpper(command)]
 
 	if !ok {
-		return "", ErrUnknownCommand
+		return nil, NewUnknownCommandError(command)
 	}
 
 	err := validateArity(definition, args)
 
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	fmt.Printf("Executing command: %s with args: %v\n", command, args)

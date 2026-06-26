@@ -34,10 +34,17 @@ func handleClientConnection(c net.Conn, concurrent_clients *int64) {
 		response, err := core.Execute(tokens[0], tokens[1:])
 
 		if err != nil {
-			// TODO: return an error resp which is RESP encoded string with error prefix
+			response = core.ErrorString(err.Error())
 		}
 
-		if err := respondToClient(c, response); err != nil {
+		encodedResponse, err := core.EncodeRESP(response)
+
+		if err != nil {
+			log.Printf("failed to encode response: %v", err)
+			response = core.ErrorString(err.Error())
+		}
+
+		if err := respondToClient(c, encodedResponse); err != nil {
 			log.Fatal("[Asynchronous]Error Responding to Client: ", err)
 			atomic.AddInt64(concurrent_clients, -1)
 			return

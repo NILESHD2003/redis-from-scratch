@@ -23,8 +23,8 @@ func readIncomingCommand(c net.Conn) ([]string, error) {
 	return tokens, nil
 }
 
-func respondToClient(c net.Conn, cmd string) error {
-	if _, err := c.Write([]byte(cmd)); err != nil {
+func respondToClient(c net.Conn, response []byte) error {
+	if _, err := c.Write(response); err != nil {
 		return err
 	}
 	return nil

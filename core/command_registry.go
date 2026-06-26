@@ -22,7 +22,7 @@ type CommandDocs struct {
 type CommandDefinition struct {
 	Name    string
 	Arity   int
-	Handler func(args []string) (string, error)
+	Handler func(args []string) (RESPValue, error)
 	Docs    CommandDocs
 }
 

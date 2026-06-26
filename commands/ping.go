@@ -4,11 +4,11 @@ import (
 	"github.com/NILESHD2003/redis-from-scratch/core"
 )
 
-func HandlePING(args []string) (string, error) {
+func HandlePING(args []string) (core.RESPValue, error) {
 	if len(args) == 0 {
-		return "PONG", nil
+		return core.SimpleString("PONG"), nil
 	}
-	return args[0], nil
+	return core.BulkString(args[0]), nil
 }
 
 var PingCommand = core.CommandDefinition{
